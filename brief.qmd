@@ -106,11 +106,10 @@ knitr::kable(res_tbl, digits = 3)
 #| label: fig-forest
 #| fig-cap: "Adjusted estimates with 95% CI"
 plot_dat <- tidy_fit |>
-  filter(term != "(Intercept)") |>
-  mutate(Term = term) |>
-  arrange(desc(Term))
+  dplyr::filter(term != "(Intercept)") |>
+  dplyr::arrange(dplyr::desc(term))
 
-ggplot(plot_dat, aes(x = Estimate, y = Term)) +
+ggplot(plot_dat, aes(x = estimate, y = term)) +
   geom_point() +
   geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
   geom_vline(xintercept = ifelse(params$model == "logistic", 1, 0), linetype = "dashed") +
