@@ -1,0 +1,30 @@
+[
+  {
+    "objectID": "brief.html",
+    "href": "brief.html",
+    "title": "Evidence Brief",
+    "section": "",
+    "text": "Cohort: Synthetic RWE Cohort\nInput: data/sim_rwe.csv\nOutcome: y_event; Treatment: treat; Covariates: age, sex, bmi\nModel: logistic (GLM)\n\nThis brief is parameterized. Render with custom inputs via Quarto:\nquarto render brief.qmd \\\n  -P cohort_name=\"My Cohort\" \\\n  -P data_path=\"data/my_data.csv\" \\\n  -P outcome=\"y\" -P treatment=\"t\" \\\n  -P covariates=\"[age,sex,bmi]\" -P model=\"logistic\""
+  },
+  {
+    "objectID": "brief.html#cohort-summary",
+    "href": "brief.html#cohort-summary",
+    "title": "Evidence Brief",
+    "section": "2.1 Cohort summary",
+    "text": "2.1 Cohort summary\n\n\nCode\nsummary_tbl &lt;- dat |&gt;\n  summarise(\n    n = n(),\n    events = sum(.data[[params$outcome]], na.rm = TRUE),\n    treated = sum(.data[[params$treatment]] == 1, na.rm = TRUE),\n    mean_age = mean(age, na.rm = TRUE),\n    mean_bmi = mean(bmi, na.rm = TRUE)\n  )\nknitr::kable(summary_tbl, digits = 2)\n\n\n\n\nTable 1: Cohort overview\n\n\n\n\n\n\nn\nevents\ntreated\nmean_age\nmean_bmi\n\n\n\n\n400\n112\n194\n52.12\n27.33"
+  },
+  {
+    "objectID": "brief.html#results-table",
+    "href": "brief.html#results-table",
+    "title": "Evidence Brief",
+    "section": "3.1 Results table",
+    "text": "3.1 Results table\n\n\nCode\nres_tbl &lt;- tidy_fit |&gt;\n  filter(term != \"(Intercept)\") |&gt;\n  select(Term = term, Estimate = estimate, `CI Low` = conf.low, `CI High` = conf.high, `p` = p.value)\nknitr::kable(res_tbl, digits = 3)\n\n\n\n\nTable 2: Adjusted model estimates\n\n\n\n\n\n\nTerm\nEstimate\nCI Low\nCI High\np\n\n\n\n\nTreatment (OR)\n1.807\n1.158\n2.838\n0.010\n\n\nage\n1.016\n0.998\n1.036\n0.081\n\n\nsexMale\n1.466\n0.940\n2.294\n0.092\n\n\nbmi\n0.994\n0.945\n1.046\n0.827"
+  },
+  {
+    "objectID": "brief.html#forest-plot",
+    "href": "brief.html#forest-plot",
+    "title": "Evidence Brief",
+    "section": "3.2 Forest plot",
+    "text": "3.2 Forest plot\n\n\nCode\nplot_dat &lt;- tidy_fit |&gt;\n  dplyr::filter(term != \"(Intercept)\") |&gt;\n  dplyr::arrange(dplyr::desc(term))\n\nggplot(plot_dat, aes(x = estimate, y = term)) +\n  geom_point() +\n  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +\n  geom_vline(xintercept = ifelse(params$model == \"logistic\", 1, 0), linetype = \"dashed\") +\n  labs(x = ylab, y = NULL)\n\n\n\n\n\n\n\n\nFigure 1: Adjusted estimates with 95% CI"
+  }
+]
