@@ -1,0 +1,20 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Evidence Brief — R (Quarto)"
+  navbar:
+    left:
+      - href: brief.qmd
+        text: Evidence Brief
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-fold: true
+    df-print: paged
+
+execute:
+  freeze: auto

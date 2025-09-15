@@ -1,0 +1,130 @@
+---
+title: "Evidence Brief"
+format:
+  html:
+    self-contained: true
+params:
+  cohort_name: "Synthetic RWE Cohort"
+  data_path: "data/sim_rwe.csv"
+  outcome: "y_event"
+  treatment: "treat"
+  covariates: ["age","sex","bmi"]
+  model: "logistic"   # "logistic" or "linear"
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+suppressPackageStartupMessages({
+  library(readr); library(dplyr); library(ggplot2); library(broom)
+})
+```
+
+# 1. Overview
+
+Cohort: **`r params$cohort_name`**  
+Input: **`r params$data_path`**  
+Outcome: **`r params$outcome`**; Treatment: **`r params$treatment`**; Covariates: **`r paste(params$covariates, collapse=', ')`**  
+Model: **`r params$model`** (GLM)
+
+> This brief is parameterized. Render with custom inputs via Quarto:
+> 
+> ```bash
+> quarto render brief.qmd \
+>   -P cohort_name="My Cohort" \
+>   -P data_path="data/my_data.csv" \
+>   -P outcome="y" -P treatment="t" \
+>   -P covariates="[age,sex,bmi]" -P model="logistic"
+> ```
+
+# 2. Data
+
+```{r}
+dat <- readr::read_csv(params$data_path, show_col_types = FALSE) |>
+  mutate(
+    across(all_of(params$treatment), as.integer),
+    across(all_of(params$outcome), as.integer),
+    sex = factor(sex, levels = c(0,1), labels = c("Female","Male"))
+  )
+
+dplyr::glimpse(dat)
+```
+
+## 2.1 Cohort summary
+
+```{r}
+#| label: tbl-summary
+#| tbl-cap: "Cohort overview"
+summary_tbl <- dat |>
+  summarise(
+    n = n(),
+    events = sum(.data[[params$outcome]], na.rm = TRUE),
+    treated = sum(.data[[params$treatment]] == 1, na.rm = TRUE),
+    mean_age = mean(age, na.rm = TRUE),
+    mean_bmi = mean(bmi, na.rm = TRUE)
+  )
+knitr::kable(summary_tbl, digits = 2)
+```
+
+# 3. Model
+
+```{r}
+# Build formula
+rhs <- paste(c(params$treatment, params$covariates), collapse = " + ")
+fm <- as.formula(paste(params$outcome, "~", rhs))
+
+if (params$model == "logistic") {
+  fit <- glm(fm, data = dat, family = binomial())
+  tidy_fit <- broom::tidy(fit, conf.int = TRUE, exponentiate = TRUE)
+  tidy_fit <- tidy_fit |>
+    mutate(term = dplyr::recode(term, !!params$treatment := "Treatment (OR)"))
+  ylab <- "Odds Ratio (95% CI)"
+} else {
+  fit <- glm(fm, data = dat)
+  tidy_fit <- broom::tidy(fit, conf.int = TRUE)
+  tidy_fit <- tidy_fit |>
+    mutate(term = dplyr::recode(term, !!params$treatment := "Treatment (beta)"))
+  ylab <- "Estimate (95% CI)"
+}
+```
+
+## 3.1 Results table
+
+```{r}
+#| label: tbl-results
+#| tbl-cap: "Adjusted model estimates"
+res_tbl <- tidy_fit |>
+  filter(term != "(Intercept)") |>
+  select(Term = term, Estimate = estimate, `CI Low` = conf.low, `CI High` = conf.high, `p` = p.value)
+knitr::kable(res_tbl, digits = 3)
+```
+
+## 3.2 Forest plot
+
+```{r}
+#| label: fig-forest
+#| fig-cap: "Adjusted estimates with 95% CI"
+plot_dat <- tidy_fit |>
+  filter(term != "(Intercept)") |>
+  mutate(Term = term) |>
+  arrange(desc(Term))
+
+ggplot(plot_dat, aes(x = Estimate, y = Term)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
+  geom_vline(xintercept = ifelse(params$model == "logistic", 1, 0), linetype = "dashed") +
+  labs(x = ylab, y = NULL)
+```
+
+# 4. Notes
+
+- Treatment variable appears first in the table and plot.
+- For logistic models, estimates are Odds Ratios.
+- Edit `params:` in the header or pass `-P` flags at render time.
+
+# 5. Reproducibility
+
+```{r}
+sessionInfo()
+```
